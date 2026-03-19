@@ -1,0 +1,1889 @@
+<!DOCTYPE html>
+<html lang="hi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vehicle Report App</title>
+    <!-- Bootstrap & Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <!-- PDF Libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+
+    <!-- PWA Meta Tags -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#6200ee">
+
+    <style>
+        :root {
+            --primary: #6200ee;
+            --bg: #f8f9fa;
+            --surface: #ffffff;
+        }
+
+        #loginView {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: var(--primary);
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            padding: 20px;
+        }
+
+        .login-card {
+            background: white;
+            padding: 30px;
+            border-radius: 20px;
+            width: 100%;
+            max-width: 350px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+            color: #333;
+        }
+
+        body {
+            background-color: var(--bg);
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            padding-bottom: 70px;
+            /* Tighter bottom space */
+            margin: 0;
+        }
+
+        .app-bar {
+            background: var(--primary);
+            color: white;
+            padding: 6px 12px;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+            border-bottom-left-radius: 8px;
+            border-bottom-right-radius: 8px;
+        }
+
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: white;
+            display: flex;
+            justify-content: space-around;
+            padding: 4px 0;
+            box-shadow: 0 -1px 8px rgba(0, 0, 0, 0.1);
+            z-index: 1000;
+            border-top-left-radius: 12px;
+            border-top-right-radius: 12px;
+        }
+
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            color: #666;
+            text-decoration: none;
+            font-size: 9px;
+            /* Smaller font */
+            border: none;
+            background: none;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        .nav-item.active {
+            color: var(--primary);
+            font-weight: bold;
+        }
+
+        .nav-item i {
+            font-size: 16px;
+            margin-bottom: 0px;
+        }
+
+        .card {
+            border: none;
+            border-radius: 6px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+            margin-bottom: 6px;
+            padding: 8px !important;
+        }
+
+        .section-title {
+            font-size: 0.8rem;
+            font-weight: bold;
+            color: var(--primary);
+            margin-bottom: 6px;
+            border-left: 3px solid var(--primary);
+            padding-left: 6px;
+        }
+
+        .form-label {
+            margin-bottom: 1px;
+            font-size: 10px;
+        }
+
+        .form-control {
+            border-radius: 4px;
+            padding: 4px 6px;
+            border: 1px solid #ddd;
+            font-size: 12px;
+            height: auto;
+        }
+
+        .btn-save {
+            background: var(--primary);
+            border: none;
+            padding: 12px;
+            font-weight: bold;
+            border-radius: 8px;
+            width: 100%;
+            transition: all 0.2s ease;
+            color: white;
+            font-size: 15px;
+            margin-top: 5px;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            cursor: pointer;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .btn-save:active {
+            transform: scale(0.98);
+            box-shadow: 0 2px 3px rgba(0, 0, 0, 0.1);
+            filter: brightness(0.9);
+        }
+
+        .btn-save:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .report-card {
+            padding: 8px;
+            background: white;
+            border-radius: 6px;
+            margin-bottom: 6px;
+            position: relative;
+        }
+
+        .action-btns {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 3px;
+            margin-top: 4px;
+        }
+
+        .btn-sm {
+            padding: 2px 5px;
+            font-size: 10px;
+        }
+
+        .photo-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 6px;
+            margin-top: 4px;
+        }
+
+        .photo-box {
+            background: #f0f0f0;
+            border: 1px dashed #ccc;
+            border-radius: 6px;
+            height: 70px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: visible;
+            /* Changed from hidden */
+            cursor: pointer;
+        }
+
+        .delete-photo-btn {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            background: rgba(220, 53, 69, 0.9);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            font-size: 12px;
+            display: none;
+            /* Hidden by default */
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+            cursor: pointer;
+        }
+
+        .photo-box img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            position: absolute;
+            top: 0;
+            left: 0;
+            border-radius: 6px;
+        }
+
+        .photo-box i {
+            font-size: 18px;
+            color: #666;
+        }
+
+        .photo-box span {
+            font-size: 8px;
+            color: #888;
+            margin-top: 1px;
+        }
+
+        #pdf-template {
+            position: fixed;
+            left: -9999px;
+            top: 0;
+            width: 600px;
+            padding: 40px;
+            background: white;
+            color: black;
+            font-size: 12px;
+        }
+
+        .fab {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 60px;
+            height: 60px;
+            background: var(--primary);
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+            cursor: pointer;
+            border: none;
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- Login Screen -->
+    <div id="loginView" style="display:none;">
+        <div class="text-center mb-4">
+            <i class="bi bi-shield-lock" style="font-size: 60px;"></i>
+            <h3 class="fw-bold mt-2">Gate Report Pro</h3>
+            <p id="loginStatus">Security Check Required</p>
+        </div>
+        <div class="login-card">
+            <!-- Existing Login Content -->
+            <ul class="nav nav-pills nav-justified mb-4" id="pills-tab" role="tablist">
+                <li class="nav-item">
+                    <button class="nav-link active py-2" id="pills-pin-tab" data-bs-toggle="pill"
+                        data-bs-target="#pills-pin" type="button">PIN</button>
+                </li>
+                <li class="nav-item">
+                    <button class="nav-link py-2" id="pills-email-tab" data-bs-toggle="pill"
+                        data-bs-target="#pills-email" type="button">Email Login</button>
+                </li>
+            </ul>
+
+            <div class="tab-content" id="pills-tabContent">
+                <!-- PIN Login -->
+                <div class="tab-pane fade show active" id="pills-pin">
+                    <h6 class="text-center mb-3" id="loginHeader">Enter PIN to Unlock</h6>
+                    <div class="mb-3">
+                        <input type="password" id="pinInput" class="form-control text-center"
+                            style="font-size: 24px; letter-spacing: 10px;" maxlength="4" placeholder="••••"
+                            onkeydown="if(event.key === 'Enter') handleLogin()">
+                    </div>
+                    <button class="btn btn-primary w-100 py-2 fw-bold" onclick="handleLogin()">UNLOCK APP</button>
+                </div>
+
+                <!-- Email Login -->
+                <div class="tab-pane fade" id="pills-email">
+                    <h6 class="text-center mb-3">Cloud Login (Email)</h6>
+                    <div class="mb-3">
+                        <input type="email" id="loginEmail" class="form-control" placeholder="Email Address">
+                    </div>
+                    <div class="mb-3">
+                        <input type="password" id="loginPassword" class="form-control" placeholder="Password">
+                    </div>
+                    <button class="btn btn-primary w-100 py-2 fw-bold mb-2" onclick="handleEmailLogin()">LOGIN /
+                        SYNC</button>
+                    <button class="btn btn-outline-secondary btn-sm w-100" onclick="handleEmailSignUp()">Register (New
+                        User)</button>
+                    <p class="small text-center mt-2 text-danger" id="firebaseError"></p>
+                    <div class="mt-2 p-2 bg-light rounded x-small text-center text-muted border">
+                        <i class="bi bi-info-circle"></i> <b>Tip:</b> Agar Cloud Login nahi ho raha, toh <b>PIN</b> tab
+                        se login karke offline kaam kar sakte hain.
+                    </div>
+                </div>
+            </div>
+
+            <p id="pinHint" class="small text-center mt-3 text-muted" style="display:none;">
+                First time? Set your 4-digit PIN above.
+            </p>
+
+            <div class="mt-4 pt-3 border-top text-center">
+                <p class="mb-0 x-small text-muted">Powered By</p>
+                <p class="fw-bold mb-0" style="color: var(--primary); font-size: 14px;">Santosh Kumar Jolhe</p>
+                <p class="x-small text-muted"><i class="bi bi-telephone"></i> 9399876001</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="app-bar d-flex justify-content-between align-items-center">
+        <h5 class="m-0 fw-bold"><i class="bi bi-shield-check"></i> Gate Report Pro</h5>
+        <div class="d-flex align-items-center gap-2">
+            <div id="globalSyncBadge" class="badge bg-danger">Offline</div>
+            <button id="logoutBtnHeader" class="btn btn-sm btn-outline-light border-0" style="display:none;"
+                onclick="logout()" title="Logout">
+                <i class="bi bi-box-arrow-right fs-5"></i>
+            </button>
+            <button id="installBtn" class="btn btn-sm btn-light text-primary fw-bold" style="display:none;"
+                onclick="installPWA()">
+                <i class="bi bi-download"></i> INSTALL
+            </button>
+        </div>
+    </div>
+
+    <div class="container mt-3" id="formView">
+        <form id="vehicleForm">
+            <input type="hidden" id="editIndex" value="">
+
+            <div class="text-center mb-4">
+                <h4 class="fw-bold">New Entry</h4>
+                <p class="text-muted small">Please fill all required details</p>
+            </div>
+
+            <!-- Details Section -->
+            <div class="card p-3">
+                <div class="section-title">Vehicle & Arrival</div>
+                <div class="mb-3">
+                    <label class="form-label small text-muted">Vehicle No (गाड़ी का नंबर)</label>
+                    <input type="text" class="form-control" id="vehicleNo" required placeholder="Ex: DL 01 AB 1234">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label small text-muted">Customer Name (ग्राहक का नाम)</label>
+                    <input type="text" class="form-control" id="customerName" placeholder="Enter Customer Name">
+                </div>
+                <div class="row g-2">
+                    <div class="col-6">
+                        <label class="form-label small text-muted">Arrival Date</label>
+                        <input type="date" class="form-control" id="arrivalDate">
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label small text-muted">Arrival Time</label>
+                        <input type="time" class="form-control" id="arrivalTime">
+                    </div>
+                </div>
+                <div class="mt-3">
+                    <label class="form-label small text-muted">Current KM</label>
+                    <input type="number" class="form-control" id="km" placeholder="Enter KM reading">
+                </div>
+            </div>
+
+            <!-- Fuel Section -->
+            <div class="card p-3">
+                <div class="section-title">Diesel & Battery</div>
+                <div class="mb-3">
+                    <label class="form-label small text-muted">Diesel (Liters)</label>
+                    <input type="number" class="form-control" id="diesel" placeholder="Liters">
+                </div>
+                <div class="row g-2">
+                    <div class="col-6">
+                        <label class="form-label small text-muted">Battery Color</label>
+                        <input type="text" class="form-control" id="batteryColor" placeholder="Color">
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label small text-muted">Battery Qty</label>
+                        <input type="number" class="form-control" id="batteryQty" placeholder="Quantity">
+                    </div>
+                </div>
+                <div class="mt-3">
+                    <label class="form-label small text-muted">Music System Status</label>
+                    <select class="form-control" id="musicSystem">
+                        <option value="Working">Working</option>
+                        <option value="Not Working">Not Working</option>
+                        <option value="Missing">Missing</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Workshop Section -->
+            <div class="card p-3">
+                <div class="section-title">Workshop & Survey</div>
+                <div class="mb-3">
+                    <label class="form-label small text-muted">Surveyor Name</label>
+                    <input type="text" class="form-control" id="surveyorName" placeholder="Name">
+                </div>
+                <div class="row g-2 mb-2">
+                    <div class="col-6">
+                        <label class="form-label small text-muted">Workshop Photo Date</label>
+                        <input type="date" class="form-control" id="workshopPhotoDate">
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label small text-muted">Dismantle Date</label>
+                        <input type="date" class="form-control" id="dismantleDate">
+                    </div>
+                </div>
+                <div class="mb-1">
+                    <label class="form-label small text-muted">Photo Date</label>
+                    <input type="date" class="form-control" id="photoDate">
+                </div>
+            </div>
+
+            <!-- Photos Section -->
+            <div class="card p-3">
+                <div class="section-title">Vehicle Photos (गाड़ी की फोटो)</div>
+                <div class="photo-grid">
+                    <label class="photo-box" id="box-front">
+                        <input type="file" accept="image/*" capture="camera" onchange="handlePhoto(this, 'front')">
+                        <i class="bi bi-camera"></i>
+                        <span>Front</span>
+                        <img id="prev-front" src="" style="display:none;">
+                        <button type="button" class="delete-photo-btn" id="del-front"
+                            onclick="removePhoto(event, 'front')">
+                            <i class="bi bi-x"></i>
+                        </button>
+                    </label>
+                    <label class="photo-box" id="box-rh">
+                        <input type="file" accept="image/*" capture="camera" onchange="handlePhoto(this, 'rh')">
+                        <i class="bi bi-camera"></i>
+                        <span>RH Side</span>
+                        <img id="prev-rh" src="" style="display:none;">
+                        <button type="button" class="delete-photo-btn" id="del-rh" onclick="removePhoto(event, 'rh')">
+                            <i class="bi bi-x"></i>
+                        </button>
+                    </label>
+                    <label class="photo-box" id="box-lh">
+                        <input type="file" accept="image/*" capture="camera" onchange="handlePhoto(this, 'lh')">
+                        <i class="bi bi-camera"></i>
+                        <span>LH Side</span>
+                        <img id="prev-lh" src="" style="display:none;">
+                        <button type="button" class="delete-photo-btn" id="del-lh" onclick="removePhoto(event, 'lh')">
+                            <i class="bi bi-x"></i>
+                        </button>
+                    </label>
+                    <label class="photo-box" id="box-rear">
+                        <input type="file" accept="image/*" capture="camera" onchange="handlePhoto(this, 'rear')">
+                        <i class="bi bi-camera"></i>
+                        <span>Rear</span>
+                        <img id="prev-rear" src="" style="display:none;">
+                        <button type="button" class="delete-photo-btn" id="del-rear"
+                            onclick="removePhoto(event, 'rear')">
+                            <i class="bi bi-x"></i>
+                        </button>
+                    </label>
+                    <label class="photo-box" id="box-odo">
+                        <input type="file" accept="image/*" capture="camera" onchange="handlePhoto(this, 'odo')">
+                        <i class="bi bi-camera"></i>
+                        <span>Odometer</span>
+                        <img id="prev-odo" src="" style="display:none;">
+                        <button type="button" class="delete-photo-btn" id="del-odo" onclick="removePhoto(event, 'odo')">
+                            <i class="bi bi-x"></i>
+                        </button>
+                    </label>
+                    <label class="photo-box" id="box-battery">
+                        <input type="file" accept="image/*" capture="camera" onchange="handlePhoto(this, 'battery')">
+                        <i class="bi bi-camera"></i>
+                        <span>Battery</span>
+                        <img id="prev-battery" src="" style="display:none;">
+                        <button type="button" class="delete-photo-btn" id="del-battery"
+                            onclick="removePhoto(event, 'battery')">
+                            <i class="bi bi-x"></i>
+                        </button>
+                    </label>
+                </div>
+                <div class="mt-2 text-center small text-muted">
+                    <i class="bi bi-info-circle"></i> Photos are compressed to save space.
+                </div>
+            </div>
+
+            <!-- Departure Section -->
+            <div class="card p-3">
+                <div class="section-title">Departure & Handover Details</div>
+                <div class="row g-2 mb-3">
+                    <div class="col-6">
+                        <label class="form-label small text-muted">Departure Date</label>
+                        <input type="date" class="form-control" id="departureDate">
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label small text-muted">Departure Time</label>
+                        <input type="time" class="form-control" id="departureTime">
+                    </div>
+                </div>
+                <div class="mb-2">
+                    <label class="form-label small text-muted fw-bold">Vehicle Handover To (वाहन किसको सौंपा
+                        गया)</label>
+                    <select class="form-select form-select-sm" id="handoverTo">
+                        <option value="">-- Select --</option>
+                        <option value="Driver">Driver (ड्राइवर)</option>
+                        <option value="Authorized Person">Authorized Person (अधिकृत व्यक्ति)</option>
+                        <option value="Customer">Customer (ग्राहक)</option>
+                    </select>
+                </div>
+                <div class="mb-0">
+                    <label class="form-label small text-muted">Receiver Name (प्राप्तकर्ता का नाम)</label>
+                    <input type="text" class="form-control form-control-sm" id="receiverName"
+                        placeholder="Name of Person">
+                </div>
+            </div>
+
+            <button type="submit" id="submitBtn" class="btn-save shadow">
+                <i class="bi bi-check-circle"></i> SAVE REPORT
+            </button>
+            <button type="button" id="cancelBtn" class="btn btn-light w-100 mt-2" style="display:none;"
+                onclick="resetAppForm()">
+                CANCEL EDIT
+            </button>
+        </form>
+    </div>
+
+    <div class="container mt-3" id="listView" style="display:none;">
+        <div class="row g-2 mb-3">
+            <div class="col-4">
+                <div class="card p-2 text-center bg-primary text-white shadow-sm border-0">
+                    <small style="font-size: 10px;">Total</small>
+                    <h5 class="m-0 fw-bold" id="stat-total">0</h5>
+                </div>
+            </div>
+            <div class="col-4">
+                <div class="card p-2 text-center bg-success text-white shadow-sm border-0">
+                    <small style="font-size: 10px;">Today</small>
+                    <h5 class="m-0 fw-bold" id="stat-today">0</h5>
+                </div>
+            </div>
+            <div class="col-4">
+                <button
+                    class="card p-2 text-center bg-warning text-dark shadow-sm border-0 w-100 h-100 justify-content-center align-items-center"
+                    onclick="bulkSyncData()" id="quickSyncBtn" style="display:none;">
+                    <i class="bi bi-cloud-arrow-up-fill fs-5"></i>
+                    <small style="font-size: 10px; font-weight: bold;">SYNC NOW</small>
+                </button>
+            </div>
+        </div>
+
+        <div class="search-box mb-2">
+            <i class="bi bi-search text-muted"></i>
+            <input type="text" id="searchInput" placeholder="Search Vehicle No..." onkeyup="filterReports()">
+        </div>
+
+        <div class="d-flex gap-2 mb-3">
+            <input type="date" id="filterDate" class="form-control form-control-sm" onchange="filterReports()">
+            <button class="btn btn-sm btn-outline-secondary" onclick="resetFilter()">Reset</button>
+        </div>
+
+        <div id="reportsContainer"></div>
+    </div>
+
+    <div class="container mt-3" id="settingsView" style="display:none;">
+        <div class="card p-3 mb-3 bg-primary text-white shadow" id="userProfileCard">
+            <div class="d-flex align-items-center justify-content-between">
+                <div class="d-flex align-items-center gap-3">
+                    <i class="bi bi-person-circle fs-1"></i>
+                    <div>
+                        <h6 class="m-0 fw-bold" id="profileEmail">Not Linked</h6>
+                        <small class="x-small" id="profileStatusText">Offline Mode</small>
+                    </div>
+                </div>
+                <button class="btn btn-sm btn-light text-primary fw-bold" id="jumpToOnlineBtn"
+                    onclick="jumpToLoginTab()">
+                    LINK EMAIL
+                </button>
+            </div>
+        </div>
+
+        <div class="card p-3">
+            <div class="section-title">Company Profile (कंपनी की जानकारी)</div>
+            <div class="mb-3">
+                <label class="form-label small text-muted">Company Name (कंपनी का नाम)</label>
+                <input type="text" class="form-control" id="set-companyName" placeholder="Ex: Rahul Motors">
+            </div>
+            <div class="mb-3">
+                <label class="form-label small text-muted">Address (पता)</label>
+                <textarea class="form-control" id="set-address" rows="2" placeholder="Full Address"></textarea>
+            </div>
+            <div class="mb-3">
+                <label class="form-label small text-muted">Admin Email (फॉरवर्ड ईमेल)</label>
+                <input type="email" class="form-control" id="set-adminEmail" placeholder="example@gmail.com">
+            </div>
+            <button class="btn btn-primary w-100" onclick="saveSettings()">Save Settings</button>
+        </div>
+
+        <div class="card p-3">
+            <div class="section-title">Cloud Sync (क्लाउड सिंक)</div>
+            <p class="small text-muted mb-2">Firebase Config is now permanently saved in the app code.</p>
+            <div class="alert alert-success small py-2 mb-0">
+                <i class="bi bi-check-circle-fill"></i> System Connected & Ready
+            </div>
+
+            <div id="syncSection" style="display:none;">
+                <hr>
+                <p class="small fw-bold mb-2 text-primary"><i class="bi bi-cloud-upload"></i> Offline Data Sync</p>
+                <p class="x-small text-muted mb-3">Aapka offline data (jo is mobile mein hai) Cloud par bhej sakte hain.
+                </p>
+                <button class="btn btn-success w-100" onclick="bulkSyncData()" id="bulkSyncBtn">
+                    <i class="bi bi-arrow-repeat"></i> Sync Offline Data to Cloud
+                </button>
+            </div>
+
+            <div id="syncStatus" class="small text-center mt-2 text-info fw-bold">Status: Offline Mode</div>
+        </div>
+
+        <div class="card p-3">
+            <div class="section-title">Security (सुरक्षा)</div>
+            <div class="mb-3">
+                <label class="form-label small text-muted">Change PIN (4-digit)</label>
+                <div class="input-group">
+                    <input type="password" id="newPin" class="form-control" maxlength="4" placeholder="New PIN">
+                    <button class="btn btn-outline-primary" onclick="changePin()">Update</button>
+                </div>
+            </div>
+            <button class="btn btn-outline-secondary w-100 mt-2" onclick="logout()">
+                <i class="bi bi-box-arrow-right"></i> Logout (लॉगआउट)
+            </button>
+        </div>
+
+        <div class="card p-3">
+            <div class="section-title">Data Management (डेटा मैनेजमेंट)</div>
+            <p class="small text-muted">Backup aur Restore करने के लिए नीचे दिए गए बटन का उपयोग करें।</p>
+            <div class="d-grid gap-2">
+                <button class="btn btn-outline-primary" onclick="exportData()">
+                    <i class="bi bi-download"></i> Download Backup (JSON)
+                </button>
+                <label class="btn btn-outline-success">
+                    <i class="bi bi-upload"></i> Restore from Backup
+                    <input type="file" id="importFile" accept=".json" style="display:none;" onchange="importData(this)">
+                </label>
+                <hr>
+                <button class="btn btn-outline-danger" onclick="clearAllData()">
+                    <i class="bi bi-exclamation-triangle"></i> Clear All Data (सब मिटाएं)
+                </button>
+            </div>
+        </div>
+
+        <div class="text-center mt-4 mb-5">
+            <p class="text-muted small">Gate Report Pro v2.0</p>
+            <hr class="mx-5">
+            <p class="fw-bold mb-1" style="color: var(--primary);">Designed & Developed By:</p>
+            <h6 class="fw-bold mb-1">Santosh Kumar Jolhe</h6>
+            <p class="small text-muted mb-0">
+                <i class="bi bi-envelope"></i> santoshjolhe1@gmail.com<br>
+                <i class="bi bi-telephone"></i> +91 9399876001
+            </p>
+        </div>
+    </div>
+
+    <!-- Bottom Navigation -->
+    <div class="bottom-nav">
+        <button class="nav-item active" id="nav-home" onclick="switchTab('home')">
+            <i class="bi bi-plus-square"></i>
+            <span>Entry</span>
+        </button>
+        <button class="nav-item" id="nav-reports" onclick="switchTab('reports')">
+            <i class="bi bi-file-earmark-text"></i>
+            <span>Reports</span>
+        </button>
+        <button class="nav-item" onclick="exportData()">
+            <i class="bi bi-download"></i>
+            <span>Backup</span>
+        </button>
+        <button class="nav-item" id="nav-settings" onclick="switchTab('settings')">
+            <i class="bi bi-gear"></i>
+            <span>Settings</span>
+        </button>
+    </div>
+
+    <!-- Removed duplicate floating credit text -->
+
+    <!-- PDF Template -->
+    <div id="pdf-template">
+        <div style="border: 1px solid #ddd; padding: 20px; border-radius: 10px;">
+            <div id="pdf-content"></div>
+            <div
+                style="margin-top: 40px; border-top: 1px solid #eee; padding-top: 15px; font-size: 10px; color: #999; text-align: center;">
+                Generated by Gate Report Pro | &copy; 2026
+            </div>
+        </div>
+    </div>
+
+    <!-- Gate Pass Template -->
+    <div id="gatepass-template"
+        style="position: fixed; left: -9999px; top: 0; width: 500px; padding: 30px; background: white; color: black; font-family: 'Courier New', Courier, monospace;">
+        <div style="border: 2px solid #333; padding: 20px;">
+            <div id="gp-company-header"
+                style="text-align: center; border-bottom: 2px dashed #333; padding-bottom: 10px; margin-bottom: 15px;">
+                <h2 style="margin: 0; text-transform: uppercase;">COMPANY NAME</h2>
+                <p style="margin: 5px 0; font-size: 12px;">ADDRESS LINE</p>
+                <h3
+                    style="margin: 10px 0 0 0; background: #333; color: white; display: inline-block; padding: 2px 10px;">
+                    ACCIDENTAL GATE PASS</h3>
+            </div>
+
+            <div style="display: flex; justify-content: space-between; margin-bottom: 15px; font-size: 14px;">
+                <span><strong>PASS NO:</strong> <span id="gp-pass-no"></span></span>
+                <span><strong>DATE:</strong> <span id="gp-date"></span></span>
+            </div>
+
+            <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+                <tr style="border-bottom: 1px solid #eee;">
+                    <td style="padding: 8px 0; width: 40%;"><strong>Vehicle No:</strong></td>
+                    <td id="gp-vehicle"></td>
+                </tr>
+                <tr style="border-bottom: 1px solid #eee;">
+                    <td style="padding: 8px 0;"><strong>Customer Name:</strong></td>
+                    <td id="gp-customer"></td>
+                </tr>
+                <tr style="border-bottom: 1px solid #eee;">
+                    <td style="padding: 8px 0;"><strong>Arrival:</strong></td>
+                    <td id="gp-arrival"></td>
+                </tr>
+                <tr style="border-bottom: 1px solid #eee;">
+                    <td style="padding: 8px 0;"><strong>KM Reading:</strong></td>
+                    <td id="gp-km"></td>
+                </tr>
+                <tr style="border-bottom: 1px solid #eee;">
+                    <td style="padding: 8px 0;"><strong>Diesel (Ltr):</strong></td>
+                    <td id="gp-diesel"></td>
+                </tr>
+                <tr style="border-bottom: 1px solid #eee;">
+                    <td style="padding: 8px 0;"><strong>Battery Detail:</strong></td>
+                    <td id="gp-battery"></td>
+                </tr>
+                <tr style="border-bottom: 1px solid #eee;">
+                    <td style="padding: 8px 0;"><strong>Music System:</strong></td>
+                    <td id="gp-music"></td>
+                </tr>
+                <tr style="border-bottom: 1px solid #eee;">
+                    <td style="padding: 8px 0;"><strong>Departure:</strong></td>
+                    <td id="gp-departure"></td>
+                </tr>
+                <tr style="border-bottom: 1px solid #eee;">
+                    <td style="padding: 8px 0;"><strong>Handover To:</strong></td>
+                    <td id="gp-handover"></td>
+                </tr>
+            </table>
+
+            <div style="margin-top: 40px; display: flex; justify-content: space-between; font-size: 12px;">
+                <div style="text-align: center; width: 150px;">
+                    <div style="border-top: 1px solid #333; margin-top: 30px;">Driver Signature</div>
+                </div>
+                <div style="text-align: center; width: 150px;">
+                    <div style="border-top: 1px solid #333; margin-top: 30px;">Authorised Sign</div>
+                </div>
+            </div>
+
+            <div
+                style="margin-top: 30px; text-align: center; font-size: 10px; color: #666; border-top: 1px dashed #ccc; padding-top: 10px;">
+                Generated by Gate Report Pro (Developer: Santosh Kumar Jolhe)
+            </div>
+        </div>
+    </div>
+
+    <!-- PDF Preview Modal -->
+    <div class="modal fade" id="pdfPreviewModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">PDF Report Preview</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-0">
+                    <iframe id="pdfPreviewFrame" src="" style="width: 100%; height: 500px; border: none;"></iframe>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-primary" id="modalDownloadBtn">Download PDF</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Photo Viewer Modal -->
+    <div class="modal fade" id="photoViewerModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content bg-dark text-white">
+                <div class="modal-header border-0">
+                    <h6 class="modal-title" id="photoViewerTitle">Photo Preview</h6>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
+                        aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-0 text-center">
+                    <img id="viewerImg" src="" style="max-width: 100%; max-height: 80vh; object-fit: contain;">
+                </div>
+                <div class="modal-footer border-0 justify-content-center">
+                    <button type="button" class="btn btn-light" id="sharePhotoBtn">
+                        <i class="bi bi-share"></i> Share on WhatsApp
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const form = document.getElementById('vehicleForm');
+        const container = document.getElementById('reportsContainer');
+        const formView = document.getElementById('formView');
+        const listView = document.getElementById('listView');
+        const settingsView = document.getElementById('settingsView');
+        const editIndexField = document.getElementById('editIndex');
+        const loginView = document.getElementById('loginView');
+
+        let currentMode = 'form';
+        let currentPhotos = { front: '', rh: '', lh: '', rear: '', odo: '', battery: '' };
+        let deferredPrompt;
+        let isAuthenticated = localStorage.getItem('gateAppIsAuthenticated') === 'true';
+        let isOnline = false;
+        let db;
+
+        // Auto-switch between Online/Offline modes
+        window.addEventListener('online', () => {
+            console.log("App is Online");
+            updateConnectionStatus();
+        });
+        window.addEventListener('offline', () => {
+            console.log("App is Offline");
+            updateConnectionStatus();
+        });
+
+        // Also check connection every 2 seconds as a fallback
+        setInterval(updateConnectionStatus, 2000);
+
+        function updateConnectionStatus() {
+            const syncStatus = document.getElementById('syncStatus');
+            const profileStatusText = document.getElementById('profileStatusText');
+            const quickSyncBtn = document.getElementById('quickSyncBtn');
+            const syncSection = document.getElementById('syncSection');
+            const globalBadge = document.getElementById('globalSyncBadge');
+
+            if (navigator.onLine) {
+                if (isOnline) {
+                    if (syncStatus) {
+                        syncStatus.innerText = 'Status: Online Mode (Connected)';
+                        syncStatus.className = 'small text-center mt-2 text-success fw-bold';
+                    }
+                    if (profileStatusText && firebase.auth && firebase.auth().currentUser) {
+                        profileStatusText.innerText = 'Online Mode (Linked)';
+                    }
+                    if (globalBadge) {
+                        globalBadge.innerText = 'Online';
+                        globalBadge.className = 'badge bg-success';
+                    }
+                    if (quickSyncBtn && firebase.auth && firebase.auth().currentUser) quickSyncBtn.style.display = 'flex';
+                    if (syncSection) syncSection.style.display = 'block';
+                } else {
+                    if (syncStatus) {
+                        syncStatus.innerText = 'Status: Cloud Connecting...';
+                        syncStatus.className = 'small text-center mt-2 text-info fw-bold';
+                    }
+                    if (globalBadge) {
+                        globalBadge.innerText = 'Connecting';
+                        globalBadge.className = 'badge bg-warning';
+                    }
+                }
+            } else {
+                if (syncStatus) {
+                    syncStatus.innerText = 'Status: Offline Mode (No Internet)';
+                    syncStatus.className = 'small text-center mt-2 text-danger fw-bold';
+                }
+                if (profileStatusText) {
+                    profileStatusText.innerText = 'Offline Mode';
+                }
+                if (globalBadge) {
+                    globalBadge.innerText = 'Offline';
+                    globalBadge.className = 'badge bg-danger';
+                }
+                if (quickSyncBtn) quickSyncBtn.style.display = 'none';
+                if (syncSection) syncSection.style.display = 'none';
+            }
+        }
+
+        function jumpToLoginTab() {
+            // Logout first if already authenticated locally but not on cloud
+            isAuthenticated = false;
+            checkAuth();
+            // Switch to Email Login Tab
+            const emailTab = new bootstrap.Tab(document.getElementById('pills-email-tab'));
+            emailTab.show();
+        }
+
+        // Security & Login Logic
+        function checkAuth() {
+            const savedPin = localStorage.getItem('gateAppPIN');
+            const logoutBtn = document.getElementById('logoutBtnHeader');
+            const loginView = document.getElementById('loginView');
+
+            // If user is logged into Firebase, we can bypass PIN check for online sessions
+            const isFirebaseLoggedIn = isOnline && firebase.auth().currentUser;
+
+            // If already authenticated (from localStorage), we hide the login view immediately
+            if (isAuthenticated || isFirebaseLoggedIn) {
+                loginView.style.display = 'none';
+                if (logoutBtn) logoutBtn.style.display = 'block';
+                return;
+            }
+
+            // Otherwise, show login view
+            loginView.style.display = 'flex';
+            if (logoutBtn) logoutBtn.style.display = 'none';
+
+            if (!savedPin) {
+                // First time user (No PIN and No Firebase)
+                document.getElementById('loginHeader').innerText = 'Set New 4-Digit PIN';
+                document.getElementById('pinHint').style.display = 'block';
+            } else {
+                document.getElementById('loginHeader').innerText = 'Enter PIN to Unlock';
+                document.getElementById('pinHint').style.display = 'none';
+            }
+        }
+
+        function handleLogin() {
+            const pin = document.getElementById('pinInput').value;
+            const savedPin = localStorage.getItem('gateAppPIN');
+
+            if (!savedPin) {
+                if (pin.length === 4) {
+                    localStorage.setItem('gateAppPIN', pin);
+                    isAuthenticated = true;
+                    localStorage.setItem('gateAppIsAuthenticated', 'true');
+                    alert('PIN Set Successfully!');
+                    checkAuth();
+                } else {
+                    alert('Please enter 4 digits PIN!');
+                }
+            } else {
+                if (pin === savedPin) {
+                    isAuthenticated = true;
+                    localStorage.setItem('gateAppIsAuthenticated', 'true');
+                    checkAuth();
+                } else {
+                    alert('Wrong PIN! Please try again.');
+                    document.getElementById('pinInput').value = '';
+                }
+            }
+        }
+
+        function changePin() {
+            const newPin = document.getElementById('newPin').value;
+            if (newPin.length === 4) {
+                localStorage.setItem('gateAppPIN', newPin);
+                alert('PIN Updated Successfully!');
+                document.getElementById('newPin').value = '';
+            } else {
+                alert('PIN must be 4 digits!');
+            }
+        }
+
+        function logout() {
+            if (isOnline && firebase.auth().currentUser) {
+                firebase.auth().signOut();
+            }
+            isAuthenticated = false;
+            localStorage.removeItem('gateAppIsAuthenticated');
+            document.getElementById('pinInput').value = '';
+            checkAuth();
+        }
+
+        // PWA Installation Logic
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            document.getElementById('installBtn').style.display = 'block';
+        });
+
+        async function installPWA() {
+            if (!deferredPrompt) return;
+            deferredPrompt.prompt();
+            const { outcome } = await deferredPrompt.userChoice;
+            if (outcome === 'accepted') {
+                document.getElementById('installBtn').style.display = 'none';
+            }
+            deferredPrompt = null;
+        }
+
+        // Service Worker Registration
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('sw.js').then(reg => {
+                    console.log('SW Registered', reg);
+                }).catch(err => console.log('SW Registration failed', err));
+            });
+        }
+
+        async function bulkSyncData() {
+            if (!isOnline || !firebase.auth().currentUser) {
+                alert('Pahle Cloud par Login karen!');
+                return;
+            }
+
+            const localReports = JSON.parse(localStorage.getItem('vehicleReports') || '[]');
+            if (localReports.length === 0) {
+                alert('Sync karne ke liye koi offline data nahi hai!');
+                return;
+            }
+
+            if (!confirm(`Kya aap ${localReports.length} reports को Cloud पर Sync करना चाहते हैं?`)) return;
+
+            const btn = document.getElementById('bulkSyncBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Syncing...';
+
+            let successCount = 0;
+            const userId = firebase.auth().currentUser.uid;
+
+            for (const report of localReports) {
+                try {
+                    // Check if already synced or mapped to this user
+                    if (report.userId && report.userId !== userId) continue;
+
+                    const reportData = { ...report, userId: userId };
+                    // Use a unique ID to avoid duplicates (vehicleNo + timestamp)
+                    const docId = `${reportData.vehicleNo}_${reportData.timestamp}`;
+                    await db.collection('reports').doc(docId).set(reportData);
+                    successCount++;
+                } catch (e) {
+                    console.error('Bulk Sync Error for one report:', e);
+                }
+            }
+
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-arrow-repeat"></i> Sync Offline Data to Cloud';
+
+            if (successCount > 0) {
+                alert(`${successCount} Reports Cloud par sync ho gayi hain!`);
+                loadReports(); // Refresh cloud list
+            } else {
+                alert('Sync failed! Network check karen.');
+            }
+        }
+
+        // Photo Handling & Compression
+        function handlePhoto(input, type) {
+            const file = input.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                const img = new Image();
+                img.onload = function () {
+                    const canvas = document.createElement('canvas');
+                    const MAX_WIDTH = 600;
+                    const MAX_HEIGHT = 450;
+                    let width = img.width;
+                    let height = img.height;
+
+                    if (width > height) {
+                        if (width > MAX_WIDTH) {
+                            height *= MAX_WIDTH / width;
+                            width = MAX_WIDTH;
+                        }
+                    } else {
+                        if (height > MAX_HEIGHT) {
+                            width *= MAX_HEIGHT / height;
+                            height = MAX_HEIGHT;
+                        }
+                    }
+
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, width, height);
+
+                    // Compress to 0.6 quality JPEG
+                    const dataUrl = canvas.toDataURL('image/jpeg', 0.6);
+                    currentPhotos[type] = dataUrl;
+
+                    const preview = document.getElementById(`prev-${type}`);
+                    preview.src = dataUrl;
+                    preview.style.display = 'block';
+
+                    // Show delete button
+                    const delBtn = document.getElementById(`del-${type}`);
+                    if (delBtn) delBtn.style.display = 'flex';
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function removePhoto(event, type) {
+            event.preventDefault();
+            event.stopPropagation();
+
+            if (confirm(`Kya aap is (${type}) photo ko hatana chahte hain?`)) {
+                currentPhotos[type] = '';
+                const preview = document.getElementById(`prev-${type}`);
+                if (preview) {
+                    preview.src = '';
+                    preview.style.display = 'none';
+                }
+
+                const delBtn = document.getElementById(`del-${type}`);
+                if (delBtn) delBtn.style.display = 'none';
+
+                // Clear the file input value itself
+                const fileInput = document.querySelector(`#box-${type} input`);
+                if (fileInput) fileInput.value = '';
+            }
+        }
+
+        function setDefaultDates() {
+            const today = new Date().toISOString().split('T')[0];
+            const now = new Date().toTimeString().slice(0, 5); // 12:30 format
+
+            if (document.getElementById('arrivalDate')) document.getElementById('arrivalDate').value = today;
+            if (document.getElementById('arrivalTime')) document.getElementById('arrivalTime').value = now;
+            if (document.getElementById('workshopPhotoDate')) document.getElementById('workshopPhotoDate').value = today;
+            if (document.getElementById('photoDate')) document.getElementById('photoDate').value = today;
+
+            // Departure details are usually empty for new entries
+            if (document.getElementById('departureDate')) document.getElementById('departureDate').value = '';
+            if (document.getElementById('departureTime')) document.getElementById('departureTime').value = '';
+        }
+
+        // Auto-fill today's date & load settings
+        window.onload = async () => {
+            // Initial UI state
+            updateConnectionStatus();
+
+            setDefaultDates();
+
+            loadSettings();
+
+            // 1. First load from Local Storage immediately for speed
+            await loadReports();
+
+            // 2. Then Initialize Firebase (which will handle auto-login)
+            await initFirebase();
+
+            // 3. checkAuth will hide/show login screen based on state
+            checkAuth();
+        };
+
+        function switchTab(tab) {
+            if (!isAuthenticated) {
+                checkAuth();
+                return;
+            }
+            const homeBtn = document.getElementById('nav-home');
+            const reportsBtn = document.getElementById('nav-reports');
+            const settingsBtn = document.getElementById('nav-settings');
+
+            formView.style.display = 'none';
+            listView.style.display = 'none';
+            settingsView.style.display = 'none';
+
+            homeBtn.classList.remove('active');
+            reportsBtn.classList.remove('active');
+            settingsBtn.classList.remove('active');
+
+            if (tab === 'reports') {
+                listView.style.display = 'block';
+                reportsBtn.classList.add('active');
+                currentMode = 'list';
+                loadReports();
+            } else if (tab === 'settings') {
+                settingsView.style.display = 'block';
+                settingsBtn.classList.add('active');
+                currentMode = 'settings';
+            } else {
+                formView.style.display = 'block';
+                homeBtn.classList.add('active');
+                currentMode = 'form';
+            }
+            window.scrollTo(0, 0);
+        }
+
+        async function saveSettings() {
+            const companyName = document.getElementById('set-companyName').value;
+            const address = document.getElementById('set-address').value;
+            const adminEmail = document.getElementById('set-adminEmail').value;
+
+            const settings = { companyName, address, adminEmail };
+            localStorage.setItem('gateAppSettings', JSON.stringify(settings));
+
+            alert('Settings save ho gayi hain!');
+            await initFirebase();
+        }
+
+        function loadSettings() {
+            const settings = JSON.parse(localStorage.getItem('gateAppSettings') || '{}');
+
+            if (settings.companyName) document.getElementById('set-companyName').value = settings.companyName;
+            if (settings.address) document.getElementById('set-address').value = settings.address;
+            if (settings.adminEmail) document.getElementById('set-adminEmail').value = settings.adminEmail;
+        }
+
+        function clearAllData() {
+            if (confirm('SAB MITAEN? (CLEAR ALL DATA?)\nKya aap pakka saara data (Reports & Photos) delete karna chahte hain? Isse vaapis nahi laya ja sakega.')) {
+                localStorage.removeItem('vehicleReports');
+                loadReports();
+                alert('Saara data delete ho gaya!');
+            }
+        }
+
+        function importData(input) {
+            const file = input.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                try {
+                    const imported = JSON.parse(e.target.result);
+                    if (Array.isArray(imported)) {
+                        const existing = JSON.parse(localStorage.getItem('vehicleReports') || '[]');
+                        const merged = [...imported, ...existing];
+                        localStorage.setItem('vehicleReports', JSON.stringify(merged));
+                        alert('Backup successfully restore ho gaya!');
+                        loadReports();
+                        switchTab('reports');
+                    } else {
+                        alert('Galat file format!');
+                    }
+                } catch (err) {
+                    alert('File read karne mein galti hui!');
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        function filterReports() {
+            const search = document.getElementById('searchInput').value.toLowerCase();
+            const date = document.getElementById('filterDate').value;
+            const reports = JSON.parse(localStorage.getItem('vehicleReports') || '[]');
+
+            const filtered = reports.filter(r => {
+                const matchSearch = r.vehicleNo.toLowerCase().includes(search);
+                const matchDate = !date || r.arrivalDate === date;
+                return matchSearch && matchDate;
+            });
+            renderReports(filtered);
+        }
+
+        function resetFilter() {
+            document.getElementById('searchInput').value = '';
+            document.getElementById('filterDate').value = '';
+            loadReports();
+        }
+
+        let unsubscribeReports = null;
+
+        // Permanent Firebase Configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyAR0dbw1-b4kLn2KbmEu_E3AToeJjEx33A",
+            authDomain: "accidental-gate-report-app.firebaseapp.com",
+            projectId: "accidental-gate-report-app",
+            storageBucket: "accidental-gate-report-app.firebasestorage.app",
+            messagingSenderId: "658110183473",
+            appId: "1:658110183473:web:8c6e67960025809e17fd10",
+            measurementId: "G-WLFWZSP8ZE"
+        };
+
+        async function initFirebase() {
+            const syncStatus = document.getElementById('syncStatus');
+            try {
+                if (firebase.apps.length === 0) {
+                    firebase.initializeApp(firebaseConfig);
+                }
+                // Force persistence to LOCAL
+                await firebase.auth().setPersistence(firebase.auth.Auth.Persistence.LOCAL);
+                db = firebase.firestore();
+                isOnline = true;
+
+                // Initial connection check after Firebase is ready
+                updateConnectionStatus();
+
+                const syncSection = document.getElementById('syncSection');
+                const quickSyncBtn = document.getElementById('quickSyncBtn');
+                if (syncSection) syncSection.style.display = 'block';
+                if (quickSyncBtn) quickSyncBtn.style.display = 'flex';
+
+                // Listen for Auth changes
+                firebase.auth().onAuthStateChanged((user) => {
+                    const profileCard = document.getElementById('userProfileCard');
+                    const profileEmail = document.getElementById('profileEmail');
+                    const jumpBtn = document.getElementById('jumpToOnlineBtn');
+                    const statusText = document.getElementById('profileStatusText');
+
+                    if (user) {
+                        isAuthenticated = true;
+                        localStorage.setItem('gateAppIsAuthenticated', 'true'); // Persist local login
+                        if (profileCard) profileCard.style.display = 'block';
+                        if (profileEmail) profileEmail.innerText = user.email;
+                        if (statusText) statusText.innerText = 'Online Mode (Linked)';
+                        if (jumpBtn) jumpBtn.style.display = 'none';
+                        if (quickSyncBtn) quickSyncBtn.style.display = 'flex';
+                        checkAuth();
+
+                        // CRITICAL: Start Realtime Listener for Instant Updates
+                        startRealtimeSync(user.uid);
+                    } else {
+                        // Don't auto-logout local session if firebase fails/logs out, 
+                        // unless it was never authenticated.
+                        if (profileEmail) profileEmail.innerText = 'Not Linked';
+                        if (statusText) statusText.innerText = 'Offline Mode';
+                        if (jumpBtn) jumpBtn.style.display = 'block';
+                        if (quickSyncBtn) quickSyncBtn.style.display = 'none';
+                        checkAuth();
+
+                        // Stop listener if logged out
+                        if (unsubscribeReports) {
+                            unsubscribeReports();
+                            unsubscribeReports = null;
+                        }
+                    }
+                });
+            } catch (e) {
+                console.error('Firebase Init Error:', e);
+                if (syncStatus) {
+                    syncStatus.innerText = 'Status: Firebase Error';
+                    syncStatus.className = 'small text-center mt-2 text-danger fw-bold';
+                }
+            }
+        }
+
+        async function handleEmailLogin() {
+            const email = document.getElementById('loginEmail').value;
+            const password = document.getElementById('loginPassword').value;
+            const errorEl = document.getElementById('firebaseError');
+
+            if (!email || !password) {
+                errorEl.innerText = 'कृपया Email और Password भरें!';
+                return;
+            }
+
+            try {
+                await firebase.auth().signInWithEmailAndPassword(email, password);
+                errorEl.innerText = '';
+            } catch (e) {
+                console.error("Login Error:", e.code);
+                if (e.code === 'auth/user-not-found') {
+                    errorEl.innerText = 'यह ईमेल रजिस्टर नहीं है। "Register" बटन दबाएं।';
+                } else if (e.code === 'auth/wrong-password') {
+                    errorEl.innerText = 'गलत पासवर्ड! कृपया दोबारा जांचें।';
+                } else if (e.code === 'auth/quota-exceeded') {
+                    errorEl.innerText = 'Firebase की सीमा (Limit) समाप्त हो गई है। कृपया 1 घंटे बाद कोशिश करें। तब तक आप PIN से काम कर सकते हैं।';
+                    // Auto-switch to PIN tab for better UX
+                    setTimeout(() => {
+                        const pinTab = new bootstrap.Tab(document.getElementById('pills-pin-tab'));
+                        pinTab.show();
+                    }, 2000);
+                } else {
+                    errorEl.innerText = 'Login Failed: ' + e.message;
+                }
+            }
+        }
+
+        async function handleEmailSignUp() {
+            const email = document.getElementById('loginEmail').value;
+            const password = document.getElementById('loginPassword').value;
+            const errorEl = document.getElementById('firebaseError');
+
+            if (!email || !password) {
+                errorEl.innerText = 'रजिस्टर करने के लिए Email और Password भरें!';
+                return;
+            }
+
+            try {
+                await firebase.auth().createUserWithEmailAndPassword(email, password);
+                alert('Registration Successful! Logging in...');
+                errorEl.innerText = '';
+            } catch (e) {
+                console.error("SignUp Error:", e.code);
+                if (e.code === 'auth/email-already-in-use') {
+                    errorEl.innerText = 'यह ईमेल पहले से ही रजिस्टर है। कृपया "LOGIN / SYNC" बटन दबाएं।';
+                } else if (e.code === 'auth/weak-password') {
+                    errorEl.innerText = 'पासवर्ड कम से कम 6 अक्षर का होना चाहिए।';
+                } else if (e.code === 'auth/quota-exceeded') {
+                    errorEl.innerText = 'Firebase की सीमा (Limit) समाप्त हो गई है। कृपया 1 घंटे बाद कोशिश करें।';
+                } else {
+                    errorEl.innerText = 'Sign Up Failed: ' + e.message;
+                }
+            }
+        }
+
+        function startRealtimeSync(uid) {
+            if (unsubscribeReports) unsubscribeReports();
+
+            console.log("Starting Realtime Sync for:", uid);
+            unsubscribeReports = db.collection('reports')
+                .where('userId', '==', uid)
+                .orderBy('timestamp', 'desc')
+                .onSnapshot((snapshot) => {
+                    const cloudReports = snapshot.docs.map(doc => doc.data());
+                    const localData = JSON.parse(localStorage.getItem('vehicleReports') || '[]');
+
+                    // Merge logic: keep local items that are not in cloud yet (offline entries)
+                    const cloudIds = new Set(cloudReports.map(r => `${r.vehicleNo}_${r.timestamp}`));
+                    const unsyncedLocal = localData.filter(r => !cloudIds.has(`${r.vehicleNo}_${r.timestamp}`));
+
+                    const mergedReports = [...unsyncedLocal, ...cloudReports];
+                    mergedReports.sort((a, b) => b.timestamp - a.timestamp);
+
+                    localStorage.setItem('vehicleReports', JSON.stringify(mergedReports));
+
+                    // Instant UI update
+                    renderReports(mergedReports);
+
+                    // Update Stats instantly
+                    const today = new Date().toISOString().split('T')[0];
+                    document.getElementById('stat-total').innerText = mergedReports.length;
+                    document.getElementById('stat-today').innerText = mergedReports.filter(r => r.arrivalDate === today).length;
+                }, (error) => {
+                    console.error("Realtime Sync Error:", error);
+                });
+        }
+
+        async function loadReports() {
+            const localData = JSON.parse(localStorage.getItem('vehicleReports') || '[]');
+            renderReports(localData);
+
+            // Update Stats instantly
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('stat-total').innerText = localData.length;
+            document.getElementById('stat-today').innerText = localData.filter(r => r.arrivalDate === today).length;
+        }
+
+        function renderReports(reports) {
+            container.innerHTML = reports.length === 0 ? '<p class="text-center mt-5 text-muted">Koi report nahi mili.</p>' : '';
+
+            reports.forEach((report, index) => {
+                const div = document.createElement('div');
+                div.className = 'report-card shadow-sm';
+                const musicStatus = report.musicSystem || 'Working';
+                let musicBadgeClass = 'bg-success-subtle text-success border-success-subtle';
+
+                if (musicStatus === 'Missing' || musicStatus === 'Not Working') {
+                    musicBadgeClass = 'bg-danger-subtle text-danger border-danger-subtle';
+                }
+
+                div.innerHTML = `
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <h6 class="mb-1 fw-bold text-uppercase">${report.vehicleNo}</h6>
+                        <p class="mb-1 small fw-bold text-primary">${report.customerName || 'No Name'}</p>
+                        <small class="text-muted"><i class="bi bi-speedometer2"></i> ${report.km} KM | <i class="bi bi-fuel-pump"></i> ${report.diesel} Ltr</small><br>
+                        <small class="text-muted"><i class="bi bi-calendar-event"></i> Arrival: ${report.arrivalDate}</small>
+                    </div>
+                    <div class="badge rounded-pill ${musicBadgeClass} border">Music: ${musicStatus}</div>
+                 
+                 ${report.photos ? `
+                 <div class="mt-2 d-flex gap-1 overflow-auto pb-1" style="max-width: 100%;">
+                     ${Object.keys(report.photos).map(type => report.photos[type] ? `
+                         <img src="${report.photos[type]}" 
+                              onclick="openPhotoViewer('${report.photos[type]}', '${type}', '${report.vehicleNo}')"
+                              style="width: 60px; height: 60px; object-fit: cover; border-radius: 8px; border: 2px solid #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.1); cursor: pointer;">
+                     ` : '').join('')}
+                 </div>
+                 ` : ''}
+
+                <div class="action-btns mt-3">
+                    <button class="btn btn-sm btn-outline-primary" onclick="editReport(${index})"><i class="bi bi-pencil"></i> Edit</button>
+                    <button class="btn btn-sm btn-outline-warning" onclick="previewPDF(${index})"><i class="bi bi-eye"></i> Full Preview</button>
+                    <button class="btn btn-sm btn-primary" onclick="downloadGatePass(${index})"><i class="bi bi-ticket-perforated"></i> Gate Pass</button>
+                    <button class="btn btn-sm btn-outline-success" onclick="downloadPDF(${index})"><i class="bi bi-file-earmark-pdf"></i> PDF</button>
+                    <button class="btn btn-sm btn-outline-info" onclick="shareOnWhatsApp(${index})"><i class="bi bi-whatsapp"></i></button>
+                    <button class="btn btn-sm btn-outline-secondary" onclick="shareOnEmail(${index})"><i class="bi bi-envelope"></i></button>
+                    <button class="btn btn-sm btn-outline-danger" onclick="deleteReport(${index})"><i class="bi bi-trash"></i></button>
+                </div>
+            `;
+                container.appendChild(div);
+            });
+        }
+
+        async function deleteReport(index) {
+            if (!confirm('Kya aap is report को delete करना चाहते हैं?')) return;
+
+            const reports = JSON.parse(localStorage.getItem('vehicleReports') || '[]');
+            const r = reports[index];
+
+            // 1. Instant Local Update (UI will update via listener if online, or manually if offline)
+            reports.splice(index, 1);
+            localStorage.setItem('vehicleReports', JSON.stringify(reports));
+
+            if (!isOnline || !firebase.auth().currentUser) {
+                renderReports(reports); // Manual update for offline
+            }
+
+            // 2. Background Cloud Delete
+            if (isOnline && firebase.auth && firebase.auth().currentUser && r.vehicleNo && r.timestamp) {
+                try {
+                    const docId = `${r.vehicleNo}_${r.timestamp}`;
+                    await db.collection('reports').doc(docId).delete();
+                    console.log('Deleted from Cloud');
+                } catch (e) {
+                    console.error('Cloud Delete Error:', e);
+                }
+            }
+
+            alert('Report delete ho gayi!');
+        }
+
+        function editReport(index) {
+            const reports = JSON.parse(localStorage.getItem('vehicleReports') || '[]');
+            const r = reports[index];
+
+            Object.keys(r).forEach(key => {
+                if (document.getElementById(key)) document.getElementById(key).value = r[key];
+            });
+
+            // Load Photos if exist
+            if (r.photos) {
+                currentPhotos = { ...r.photos };
+                Object.keys(currentPhotos).forEach(type => {
+                    const preview = document.getElementById(`prev-${type}`);
+                    const delBtn = document.getElementById(`del-${type}`);
+                    if (currentPhotos[type]) {
+                        preview.src = currentPhotos[type];
+                        preview.style.display = 'block';
+                        if (delBtn) delBtn.style.display = 'flex';
+                    } else {
+                        preview.style.display = 'none';
+                        if (delBtn) delBtn.style.display = 'none';
+                    }
+                });
+            } else {
+                resetPhotoPreviews();
+            }
+
+            editIndexField.value = index;
+            document.getElementById('submitBtn').innerHTML = '<i class="bi bi-arrow-repeat"></i> UPDATE REPORT';
+            document.getElementById('cancelBtn').style.display = 'block';
+            switchTab('home');
+        }
+
+        function resetPhotoPreviews() {
+            currentPhotos = { front: '', rh: '', lh: '', rear: '', odo: '', battery: '' };
+            ['front', 'rh', 'lh', 'rear', 'odo', 'battery'].forEach(type => {
+                const prev = document.getElementById(`prev-${type}`);
+                if (prev) {
+                    prev.src = '';
+                    prev.style.display = 'none';
+                }
+            });
+        }
+
+        function resetAppForm() {
+            console.log("Resetting Entry Tab Form...");
+
+            // 1. Force Clear the actual HTML Form element
+            if (form) form.reset();
+
+            // 2. Manually clear all inputs to be 100% sure (including hidden ones)
+            const inputs = document.querySelectorAll('#vehicleForm input, #vehicleForm textarea, #vehicleForm select');
+            inputs.forEach(input => {
+                if (input.tagName === 'SELECT') {
+                    input.selectedIndex = 0;
+                } else if (input.type === 'hidden') {
+                    input.value = '';
+                } else if (input.type !== 'submit' && input.type !== 'button') {
+                    input.value = '';
+                }
+            });
+
+            // 3. Reset internal photo memory and UI previews
+            currentPhotos = { front: '', rh: '', lh: '', rear: '', odo: '', battery: '' };
+            ['front', 'rh', 'lh', 'rear', 'odo', 'battery'].forEach(type => {
+                const prev = document.getElementById(`prev-${type}`);
+                if (prev) {
+                    prev.src = '';
+                    prev.style.display = 'none';
+                }
+                const delBtn = document.getElementById(`del-${type}`);
+                if (delBtn) delBtn.style.display = 'none';
+
+                // Clear the file input value itself
+                const fileInput = document.querySelector(`#box-${type} input`);
+                if (fileInput) fileInput.value = '';
+            });
+
+            // 4. Reset edit state UI
+            editIndexField.value = "";
+            const submitBtn = document.getElementById('submitBtn');
+            if (submitBtn) submitBtn.innerHTML = '<i class="bi bi-check-circle"></i> SAVE REPORT';
+
+            const cancelBtn = document.getElementById('cancelBtn');
+            if (cancelBtn) cancelBtn.style.display = 'none';
+
+            // 5. Re-apply fresh default dates and times
+            setDefaultDates();
+
+            console.log("Entry Tab Form Wiped Clean.");
+        }
+
+        async function previewPDF(index) {
+            const pdf = await generatePDFBlob(index);
+            const url = URL.createObjectURL(pdf);
+            document.getElementById('pdfPreviewFrame').src = url;
+
+            // Set up modal download button
+            const modalDownloadBtn = document.getElementById('modalDownloadBtn');
+            modalDownloadBtn.onclick = () => downloadPDF(index);
+
+            const modal = new bootstrap.Modal(document.getElementById('pdfPreviewModal'));
+            modal.show();
+        }
+
+        async function downloadPDF(index) {
+            const reports = JSON.parse(localStorage.getItem('vehicleReports') || '[]');
+            const r = reports[index];
+            const pdfBlob = await generatePDFBlob(index);
+            const url = URL.createObjectURL(pdfBlob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `Report_${r.vehicleNo}.pdf`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        async function downloadGatePass(index) {
+            const reports = JSON.parse(localStorage.getItem('vehicleReports') || '[]');
+            const r = reports[index];
+            const settings = JSON.parse(localStorage.getItem('gateAppSettings') || '{}');
+            const { jsPDF } = window.jspdf;
+
+            // Fill Gate Pass Template
+            document.getElementById('gp-company-header').innerHTML = `
+                <h2 style="margin: 0; text-transform: uppercase;">${settings.companyName || 'GATE REPORT PRO'}</h2>
+                <p style="margin: 5px 0; font-size: 12px;">${settings.address || ''}</p>
+                <h3 style="margin: 10px 0 0 0; background: #333; color: white; display: inline-block; padding: 2px 10px;">ACCIDENTAL GATE PASS</h3>
+            `;
+            document.getElementById('gp-pass-no').innerText = `GP-${r.timestamp.toString().slice(-6)}`;
+            document.getElementById('gp-date').innerText = new Date().toLocaleDateString();
+            document.getElementById('gp-vehicle').innerText = r.vehicleNo;
+            document.getElementById('gp-customer').innerText = r.customerName || '--';
+            document.getElementById('gp-arrival').innerText = `${r.arrivalDate} ${r.arrivalTime}`;
+            document.getElementById('gp-km').innerText = `${r.km} KM`;
+            document.getElementById('gp-diesel').innerText = `${r.diesel} Liters`;
+            document.getElementById('gp-battery').innerText = `${r.batteryColor} (Qty: ${r.batteryQty})`;
+            document.getElementById('gp-music').innerText = r.musicSystem;
+            document.getElementById('gp-departure').innerText = `${r.departureDate || '--'} ${r.departureTime || '--'}`;
+            document.getElementById('gp-handover').innerText = r.handoverTo ? `${r.handoverTo}${r.receiverName ? ' (' + r.receiverName + ')' : ''}` : '--';
+
+            const template = document.getElementById('gatepass-template');
+            template.style.display = 'block';
+
+            try {
+                const canvas = await html2canvas(template, { scale: 2 });
+                const imgData = canvas.toDataURL('image/png');
+                const pdf = new jsPDF('p', 'mm', 'a5'); // Gate pass is usually smaller (A5)
+                const pdfWidth = pdf.internal.pageSize.getWidth();
+                const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+
+                pdf.addImage(imgData, 'PNG', 5, 5, pdfWidth - 10, pdfHeight - 10);
+                pdf.save(`GatePass_${r.vehicleNo}.pdf`);
+            } catch (err) {
+                console.error('Gate Pass Generation Error:', err);
+                alert('Gate Pass जनरेट करने में समस्या आई।');
+            } finally {
+                template.style.display = 'none';
+            }
+        }
+
+        async function generatePDFBlob(index) {
+            const reports = JSON.parse(localStorage.getItem('vehicleReports') || '[]');
+            const r = reports[index];
+            const settings = JSON.parse(localStorage.getItem('gateAppSettings') || '{}');
+            const { jsPDF } = window.jspdf;
+
+            const content = document.getElementById('pdf-content');
+
+            // Header with Company Info
+            const companyHeader = settings.companyName ? `
+                <div style="text-align: center; margin-bottom: 20px; border-bottom: 2px solid #6200ee; padding-bottom: 10px;">
+                    <h1 style="color: #6200ee; margin: 0; font-size: 24px; text-transform: uppercase;">${settings.companyName}</h1>
+                    <p style="margin: 5px 0 0 0; font-size: 12px; color: #555;">${settings.address || ''}</p>
+                    <h3 style="margin-top: 15px; color: #333; font-size: 18px;">Vehicle Inspection Report</h3>
+                </div>
+            ` : `
+                <div style="text-align: center; margin-bottom: 20px; border-bottom: 2px solid #6200ee; padding-bottom: 10px;">
+                    <h1 style="color: #6200ee; margin: 0; font-size: 24px;">Gate Report Pro</h1>
+                    <h3 style="margin-top: 10px; color: #333; font-size: 18px;">Vehicle Inspection Report</h3>
+                    <p style="color: #666; font-size: 12px;">Official Record</p>
+                </div>
+            `;
+
+            content.innerHTML = `
+                ${companyHeader}
+                <table class="table table-bordered" style="font-size: 12px;">
+                <tbody>
+                    <tr><th colspan="2" class="text-center bg-light">Vehicle Basic Details</th></tr>
+                    <tr><td class="w-50"><strong>Vehicle No:</strong></td><td>${r.vehicleNo}</td></tr>
+                    <tr><td><strong>Customer Name:</strong></td><td>${r.customerName || '--'}</td></tr>
+                    <tr><td><strong>Arrival Date/Time:</strong></td><td>${r.arrivalDate} ${r.arrivalTime}</td></tr>
+                    <tr><td><strong>Current KM:</strong></td><td>${r.km}</td></tr>
+                    
+                    <tr><th colspan="2" class="text-center bg-light">Fuel & Battery</th></tr>
+                    <tr><td><strong>Diesel:</strong></td><td>${r.diesel} Liters</td></tr>
+                    <tr><td><strong>Battery:</strong></td><td>${r.batteryColor} (Qty: ${r.batteryQty})</td></tr>
+                    <tr><td><strong>Music System:</strong></td><td>${r.musicSystem}</td></tr>
+                    
+                    <tr><th colspan="2" class="text-center bg-light">Workshop & Survey</th></tr>
+                    <tr><td><strong>Surveyor Name:</strong></td><td>${r.surveyorName}</td></tr>
+                    <tr><td><strong>Workshop Photo:</strong></td><td>${r.workshopPhotoDate}</td></tr>
+                    <tr><td><strong>Dismantle Date:</strong></td><td>${r.dismantleDate}</td></tr>
+                    <tr><td><strong>Photo Date:</strong></td><td>${r.photoDate}</td></tr>
+                    
+                    <tr><th colspan="2" class="text-center bg-light">Departure Details</th></tr>
+                    <tr><td><strong>Departure Date/Time:</strong></td><td>${r.departureDate} ${r.departureTime}</td></tr>
+                    <tr><td><strong>Handover To:</strong></td><td>${r.handoverTo || '--'} ${r.receiverName ? '(' + r.receiverName + ')' : ''}</td></tr>
+                </tbody>
+            </table>
+        `;
+
+            const template = document.getElementById('pdf-template');
+            template.style.display = 'block';
+
+            const canvas = await html2canvas(template);
+            const imgData = canvas.toDataURL('image/png');
+            const pdf = new jsPDF('p', 'mm', 'a4');
+            const pdfWidth = pdf.internal.pageSize.getWidth();
+            const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+            pdf.addImage(imgData, 'PNG', 10, 10, pdfWidth - 20, pdfHeight - 10);
+            template.style.display = 'none';
+            return pdf.output('blob');
+        }
+
+        function shareOnWhatsApp(index) {
+            const reports = JSON.parse(localStorage.getItem('vehicleReports') || '[]');
+            const r = reports[index];
+            const text = `*Vehicle Report*\n\nVehicle No: ${r.vehicleNo}\nKM: ${r.km}\nDiesel: ${r.diesel}L\nSurveyor: ${r.surveyorName}\nArrival: ${r.arrivalDate}\n\nGenerated by Gate Report Pro`;
+            window.open(`https://wa.me/?text=${encodeURIComponent(text)}`);
+        }
+
+        function shareOnEmail(index) {
+            const reports = JSON.parse(localStorage.getItem('vehicleReports') || '[]');
+            const r = reports[index];
+            const settings = JSON.parse(localStorage.getItem('gateAppSettings') || '{}');
+            const adminEmail = settings.adminEmail || '';
+
+            const subject = `Vehicle Report: ${r.vehicleNo}`;
+            const body = `Vehicle Report Detail:\n\nVehicle No: ${r.vehicleNo}\nKM: ${r.km}\nDiesel: ${r.diesel}L\nArrival: ${r.arrivalDate} ${r.arrivalTime}\nSurveyor: ${r.surveyorName}\n\nGenerated by Gate Report Pro`;
+
+            window.location.href = `mailto:${adminEmail}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+        }
+
+        function openPhotoViewer(imgSrc, type, vehicleNo) {
+            const modal = new bootstrap.Modal(document.getElementById('photoViewerModal'));
+            document.getElementById('viewerImg').src = imgSrc;
+            document.getElementById('photoViewerTitle').innerText = `${vehicleNo} - ${type.toUpperCase()}`;
+
+            // Share photo logic (since sharing actual base64 image on WhatsApp via URL isn't directly possible, we share details)
+            document.getElementById('sharePhotoBtn').onclick = () => {
+                const text = `*Vehicle Photo Share*\n\nVehicle: ${vehicleNo}\nType: ${type.toUpperCase()}\n\nPhoto attached with full report.`;
+                window.open(`https://wa.me/?text=${encodeURIComponent(text)}`);
+            };
+
+            modal.show();
+        }
+
+        function exportData() {
+            const reports = localStorage.getItem('vehicleReports');
+            if (!reports || reports === '[]') {
+                alert('Export karne ke liye koi data nahi hai!');
+                return;
+            }
+
+            const blob = new Blob([reports], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            const date = new Date().toISOString().split('T')[0];
+
+            a.href = url;
+            a.download = `Gate_Reports_Backup_${date}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+
+            alert('Aapka backup (JSON format) download ho gaya hai. Ise surakshit rakhen!');
+        }
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const submitBtn = document.getElementById('submitBtn');
+
+            // 1. Check if button is already disabled
+            if (submitBtn.disabled) return;
+
+            // 2. Disable button and show loading state immediately
+            submitBtn.disabled = true;
+            const originalText = submitBtn.innerHTML;
+            submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> SAVING...';
+
+            try {
+                const reports = JSON.parse(localStorage.getItem('vehicleReports') || '[]');
+                const editIndex = editIndexField.value;
+
+                let data = {
+                    photos: { ...currentPhotos },
+                    timestamp: editIndex !== "" ? reports[editIndex].timestamp : new Date().getTime()
+                };
+
+                const inputs = form.querySelectorAll('input, select, textarea');
+                inputs.forEach(input => { if (input.id) data[input.id] = input.value; });
+
+                // Background Cloud Save
+                if (isOnline && firebase.auth && firebase.auth().currentUser) {
+                    data.userId = firebase.auth().currentUser.uid;
+                    const docId = `${data.vehicleNo}_${data.timestamp}`;
+                    db.collection('reports').doc(docId).set(data).catch(e => console.error('Cloud Sync Error:', e));
+                }
+
+                // Local Update
+                if (editIndex !== "") {
+                    reports[editIndex] = data;
+                } else {
+                    reports.unshift(data);
+                }
+                localStorage.setItem('vehicleReports', JSON.stringify(reports));
+
+                alert('Report saved successfully!');
+
+                // Force reset internal state
+                currentPhotos = { front: '', rh: '', lh: '', rear: '', odo: '', battery: '' };
+
+                // Final reload to clear everything
+                window.location.reload();
+            } catch (err) {
+                console.error("Save Error:", err);
+                alert("Saving me error aayi. Please try again.");
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalText;
+            }
+        });
+    </script>
+
+</body>
+
+</html>
