@@ -1,0 +1,17 @@
+{
+  "name": "Gate Report Pro",
+  "short_name": "GateReport",
+  "description": "Professional Vehicle Gate Entry Report App",
+  "start_url": "index.html",
+  "display": "standalone",
+  "background_color": "#6200ee",
+  "theme_color": "#6200ee",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/741/741407.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
