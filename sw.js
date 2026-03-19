@@ -1,6 +1,8 @@
-const CACHE_NAME = 'gate-report-v2';
+const CACHE_NAME = 'gate-report-v3';
 const ASSETS = [
-  'index.html',
+  './',
+  './index.html',
+  './manifest.json',
   'https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css',
   'https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css',
   'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',
